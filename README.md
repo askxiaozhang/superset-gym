@@ -123,7 +123,7 @@ screenshots/            # README 截图
 ```
 
 ## 🙏 致谢
-
+- 针对我个人的训练计划来自知乎专栏[zhuanlan.zhihu.com/p/77858795](zhuanlan.zhihu.com/p/77858795), 计划详细与修改参考自下述链接
 - 训练方法参考自知乎专栏 [zhuanlan.zhihu.com/p/77858795](https://zhuanlan.zhihu.com/p/77858795)。
 - 训练计划仅供参考，如有伤病或基础疾病，请先咨询专业人士。
 
