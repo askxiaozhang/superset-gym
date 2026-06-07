@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>超级组训练 · 计时台</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<meta name="apple-mobile-web-app-title" content="超级组训练">
+<style>
+  :root{
+    --bg:#0a0b0e;
+    --t1:#f3f5f9;        /* primary text   */
+    --t2:#9099a8;        /* secondary      */
+    --t3:#565e6c;        /* tertiary       */
+    --surf:rgba(255,255,255,.045);
+    --surf2:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.09);
+    --work:#ff6f61;
+    --rest:#37d6a0;
+    --warm:#f3b54a;
+    --cool:#7aa2ff;
+    --acc:var(--work);   /* set per-phase  */
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--t1);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility}
+  body{min-height:100dvh; overscroll-behavior:none}
+  .wrap{max-width:460px; margin:0 auto; min-height:100dvh; display:flex; flex-direction:column;
+    padding:env(safe-area-inset-top) 20px calc(env(safe-area-inset-bottom) + 10px)}
+  button{font-family:inherit; cursor:pointer; border:none; color:inherit; background:none}
+  .tnum{font-variant-numeric:tabular-nums; font-feature-settings:"tnum"}
+  .hidden{display:none !important}
+  .up{text-transform:uppercase; letter-spacing:.16em}
+
+  /* ───────────────── HOME ───────────────── */
+  #home{flex:1; display:flex; flex-direction:column}
+  .hero{padding:40px 2px 8px}
+  .hero .kik{font-size:11px; color:var(--t3); font-weight:700}
+  .hero h1{font-size:27px; font-weight:680; margin:0; letter-spacing:-.01em; line-height:1.25}
+  .hero p{margin:12px 0 0; color:var(--t2); font-size:14px; line-height:1.65; max-width:34ch}
+
+  .opt{display:flex; align-items:center; gap:14px; padding:16px 2px; margin-top:22px;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
+  .opt .ot{flex:1}
+  .opt .ot b{font-size:14.5px; font-weight:600; display:block}
+  .opt .ot small{color:var(--t2); font-size:12.5px}
+  .sw{width:48px; height:29px; border-radius:99px; background:#262a32; position:relative; flex:none; transition:background .22s var(--ease)}
+  .sw::after{content:""; position:absolute; width:23px; height:23px; border-radius:50%; background:#fff; top:3px; left:3px;
+    transition:left .22s var(--ease)}
+  .sw.on{background:var(--rest)}
+  .sw.on::after{left:22px}
+
+  .days{display:flex; flex-direction:column; padding:8px 0}
+  .day{display:flex; align-items:center; gap:18px; padding:19px 4px; text-align:left; width:100%;
+    border-bottom:1px solid var(--line); transition:opacity .15s}
+  .day:last-child{border-bottom:none}
+  .day:active{opacity:.55}
+  .day .dn{font-size:13px; font-weight:700; color:var(--t1); width:30px; flex:none;
+    border:1px solid var(--line); border-radius:9px; height:42px; display:grid; place-items:center}
+  .day .dm{flex:1; min-width:0; display:flex; flex-direction:column}
+  .day .dm .lab{font-size:17px; font-weight:620; letter-spacing:-.01em}
+  .day .dm .sub{font-size:13px; color:var(--t2); margin-top:3px}
+  .day .dm .sub b{color:var(--work); font-weight:600}
+  .day .arr{color:var(--t3); font-size:20px; flex:none}
+  .legend{margin-top:auto; padding:22px 2px 6px; color:var(--t3); font-size:11.5px; line-height:1.85}
+  .legend b{color:var(--t2); font-weight:600}
+
+  /* ───────────────── SESSION ───────────────── */
+  #session{flex:1; display:none; flex-direction:column}
+  .top{display:flex; align-items:center; gap:14px; padding:12px 0 14px}
+  .top .ic{width:36px; height:36px; flex:none; display:grid; place-items:center; font-size:17px; color:var(--t2);
+    border:1px solid var(--line); border-radius:10px}
+  .top .tt{flex:1; min-width:0; text-align:center}
+  .top .tt .a{font-size:14.5px; font-weight:620; letter-spacing:-.01em}
+  .top .tt .b{font-size:11px; color:var(--t3); margin-top:1px}
+  .top .sp{width:36px; flex:none}
+  .seg{display:flex; gap:5px; padding:0 1px}
+  .seg i{flex:1; height:3px; border-radius:3px; background:var(--line); transition:background .3s}
+  .seg i.done{background:var(--t3)}
+  .seg i.cur{background:var(--acc)}
+
+  .stage{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:8px 0; gap:0}
+  .ctx{font-size:11.5px; font-weight:700; color:var(--t2); min-height:14px}
+  .ctx em{color:var(--acc); font-style:normal}
+  .exn{font-size:clamp(26px,7.5vw,34px); font-weight:680; letter-spacing:-.015em; line-height:1.15;
+    margin:10px 0 0; text-wrap:balance}
+  .note{display:inline-block; margin-top:10px; font-size:12px; font-weight:600; color:var(--warm);
+    background:rgba(243,181,74,.12); padding:4px 11px; border-radius:8px}
+
+  /* timer ring */
+  .ringwrap{position:relative; width:clamp(220px,68vw,288px); aspect-ratio:1; margin:24px 0}
+  .ringwrap svg{width:100%; height:100%; display:block; transform:rotate(-90deg)}
+  .ring-track{fill:none; stroke:var(--surf2); stroke-width:11}
+  .ring-prog{fill:none; stroke:var(--acc); stroke-width:11; stroke-linecap:round;
+    transition:stroke-dashoffset .3s linear, stroke .4s var(--ease)}
+  .rc{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px}
+  .rc .big{font-size:clamp(54px,15vw,68px); font-weight:300; letter-spacing:-.02em; line-height:.9}
+  .rc .lbl{font-size:12.5px; font-weight:650; color:var(--t2)}
+  .rc .lbl b{color:var(--acc)}
+
+  .nx{font-size:13px; color:var(--t2); min-height:18px; padding:0 8px; margin-top:20px}
+  .nx span{color:var(--t3); font-weight:700; margin-right:8px; font-size:11px; letter-spacing:.1em}
+  .nx b{color:var(--t1); font-weight:600}
+
+  /* rest screen: next + log */
+  .restblk{width:100%; display:flex; flex-direction:column; gap:12px; margin-top:4px}
+  .nextcard{width:100%; display:flex; align-items:center; gap:14px; text-align:left;
+    padding:15px 16px; background:var(--surf); border-radius:16px}
+  .nextcard .lead{font-size:10.5px; font-weight:700; color:var(--acc); letter-spacing:.14em; flex:none}
+  .nextcard .nb{flex:1; min-width:0}
+  .nextcard .nb .nm{font-size:16px; font-weight:620; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .nextcard .nb .ns{font-size:12px; color:var(--t2); margin-top:2px}
+  .logrow{width:100%; text-align:left}
+  .logrow .lt{font-size:11.5px; color:var(--t2); margin:0 2px 9px; display:flex; justify-content:space-between}
+  .logrow .lt .prev b{color:var(--t1); font-weight:600}
+  .logrow .lt .hint{color:var(--rest); font-weight:600}
+  .logrow .fields{display:flex; gap:11px}
+  .field{flex:1; position:relative}
+  .field input{width:100%; background:var(--surf); border:1px solid transparent; border-radius:14px; color:var(--t1);
+    font-size:21px; font-weight:600; padding:13px 14px 13px 16px; text-align:left; outline:none; transition:border-color .15s}
+  .field input::placeholder{color:var(--t3); font-weight:500}
+  .field input:focus{border-color:var(--rest)}
+  .field .u{position:absolute; right:15px; top:50%; transform:translateY(-50%); font-size:13px; color:var(--t3); font-weight:600; pointer-events:none}
+
+  .desc{color:var(--t2); font-size:14.5px; line-height:1.9; max-width:32ch; margin:4px auto 0}
+
+  /* controls */
+  .ctrls{display:flex; align-items:center; gap:14px; padding:10px 0 calc(env(safe-area-inset-bottom) + 6px)}
+  .side{width:62px; height:62px; flex:none; border-radius:50%; font-size:23px; color:var(--t2);
+    border:1px solid var(--line); display:grid; place-items:center; transition:transform .1s, background .15s}
+  .side:active{transform:scale(.92); background:var(--surf)}
+  .main{flex:1; height:62px; border-radius:99px; font-size:18px; font-weight:650; letter-spacing:.01em;
+    background:var(--acc); color:#0a0b0e; transition:transform .1s, filter .15s}
+  .main:active{transform:scale(.985); filter:brightness(.94)}
+  .main.ghost{background:var(--surf2); color:var(--t1)}
+
+  /* ───────────────── SUMMARY ───────────────── */
+  #summary{flex:1; display:none; flex-direction:column}
+  .sh{padding:48px 2px 10px}
+  .sh .ic{font-size:13px; font-weight:700; color:var(--rest); letter-spacing:.14em; margin-bottom:14px}
+  .sh h2{margin:0; font-size:26px; font-weight:680; letter-spacing:-.01em}
+  .sh p{margin:10px 0 0; color:var(--t2); font-size:14px}
+  .sl{display:flex; flex-direction:column; padding:18px 0 8px; overflow-y:auto}
+  .sr{display:flex; align-items:center; gap:15px; padding:15px 2px; border-bottom:1px solid var(--line)}
+  .sr .b{width:26px; flex:none; font-size:12px; font-weight:700; color:var(--t3)}
+  .sr .sm{flex:1; min-width:0}
+  .sr .sm .n{font-size:15px; font-weight:600}
+  .sr .sm .t{font-size:12px; color:var(--t3); margin-top:2px}
+  .sr .w{font-size:18px; font-weight:680}
+  .sr .w span{font-size:12.5px; color:var(--t3); font-weight:500}
+  .sr .w.e{color:var(--t3); font-size:13px; font-weight:500}
+  .sr .w .up{color:var(--rest); font-size:12.5px; font-weight:700}
+  .sr .w .dn{color:var(--work); font-size:12.5px; font-weight:700}
+  .sr .w .eq{color:var(--t3); font-size:12px; font-weight:600}
+  .sb{display:flex; gap:13px; padding:10px 0 calc(env(safe-area-inset-bottom) + 12px); margin-top:auto}
+  .sb button{flex:1; height:56px; border-radius:99px; font-size:16px; font-weight:650}
+  .sb .copy{background:var(--surf2); color:var(--t1)}
+  .sb .done{background:var(--rest); color:#0a0b0e}
+
+  /* weight control on the work screen */
+  .wbox{width:100%; max-width:330px; margin:18px auto 0}
+  .wb-top{display:flex; justify-content:space-between; align-items:center; margin:0 4px 9px}
+  .wb-l{font-size:12.5px; color:var(--t2); font-weight:600}
+  .wprog{font-size:12.5px; font-weight:700; color:var(--t3)}
+  .wprog.up{color:var(--rest)} .wprog.dn{color:var(--work)} .wprog.eq{color:var(--t2)}
+  .wb-step{display:flex; align-items:center; gap:11px}
+  .wb-btn{width:54px; height:54px; flex:none; border-radius:15px; background:var(--surf); color:var(--t1);
+    font-size:26px; font-weight:300; display:grid; place-items:center; transition:background .12s, transform .1s}
+  .wb-btn:active{background:var(--surf2); transform:scale(.94)}
+  .wb-val{flex:1; height:54px; background:var(--surf); border-radius:15px; display:flex; align-items:center; justify-content:center; gap:6px}
+  .wb-val input{width:100%; max-width:120px; background:none; border:none; outline:none; color:var(--t1);
+    font-size:25px; font-weight:680; text-align:center; -moz-appearance:textfield}
+  .wb-val input::-webkit-outer-spin-button, .wb-val input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+  .wb-u{font-size:14px; color:var(--t3); font-weight:600}
+
+  /* ───────────────── home header gear ───────────────── */
+  .hbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px}
+  .gear{width:40px; height:40px; flex:none; border:1px solid var(--line); border-radius:11px; color:var(--t2);
+    font-size:17px; display:grid; place-items:center; transition:background .15s}
+  .gear:active{background:var(--surf)}
+
+  /* ───────────────── SETTINGS ───────────────── */
+  #settings{flex:1; display:none; flex-direction:column}
+  .sbar{display:flex; align-items:center; gap:14px; padding:12px 0 8px}
+  .sbar .ic{width:36px; height:36px; flex:none; display:grid; place-items:center; font-size:22px; color:var(--t2);
+    border:1px solid var(--line); border-radius:10px}
+  .sbar .st{flex:1; font-size:17px; font-weight:620; letter-spacing:-.01em}
+  .sbar .sp{width:36px; flex:none}
+  #setBody{overflow-y:auto; padding-bottom:8px}
+  .sgroup{margin-top:22px}
+  .sgroup .gh{font-size:11.5px; font-weight:700; color:var(--t2); margin:0 2px 4px}
+  .srow{display:flex; align-items:center; justify-content:space-between; padding:15px 2px; border-bottom:1px solid var(--line)}
+  .srow .sl{font-size:15.5px; font-weight:550}
+  .stepper{display:flex; align-items:center; background:var(--surf); border-radius:13px; overflow:hidden}
+  .stepper button{width:46px; height:46px; font-size:24px; font-weight:300; color:var(--t1); display:grid; place-items:center; transition:background .12s}
+  .stepper button:active{background:var(--surf2)}
+  .stepper .v{min-width:70px; text-align:center; font-size:17px; font-weight:650}
+  .stepper .v small{font-size:12px; color:var(--t3); font-weight:500; margin-left:3px}
+  .sreset{margin-top:26px; height:54px; border-radius:99px; background:var(--surf2); color:var(--t1);
+    font-size:15.5px; font-weight:600; width:100%; transition:filter .15s}
+  .sreset:active{filter:brightness(.9)}
+  .snote{color:var(--t3); font-size:12px; line-height:1.75; margin:16px 2px calc(env(safe-area-inset-bottom) + 10px)}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ════════ HOME ════════ -->
+  <section id="home">
+    <div class="hero">
+      <div class="hbar"><div class="kik up">超级组训练</div><button class="gear" id="settBtn">⚙</button></div>
+      <h1>跟着练就行<br>计时、提示、记录都交给我</h1>
+      <p>自动卡组内 / 组间休息，提前告诉你下一个动作，顺手记下每个动作的重量。</p>
+    </div>
+    <button class="opt" id="optBtn">
+      <div class="ot"><b>包含「备用」超级组</b><small>时间充裕时练满 1 小时</small></div>
+      <span class="sw" id="sw"></span>
+    </button>
+    <div class="days" id="dayList"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <!-- ════════ SESSION ════════ -->
+  <section id="session">
+    <div class="top">
+      <button class="ic" id="exitBtn">✕</button>
+      <div class="tt"><div class="a" id="tTitle"></div><div class="b" id="tSub"></div></div>
+      <div class="sp"></div>
+    </div>
+    <div class="seg" id="seg"></div>
+    <div class="stage" id="stage"></div>
+    <div class="ctrls">
+      <button class="side" id="prevBtn">‹</button>
+      <button class="main" id="mainBtn">开始</button>
+      <button class="side" id="nextBtn">›</button>
+    </div>
+  </section>
+
+  <!-- ════════ SUMMARY ════════ -->
+  <section id="summary">
+    <div class="sh">
+      <div class="ic up">训练完成</div>
+      <h2 id="sumTitle"></h2>
+      <p id="sumSub"></p>
+    </div>
+    <div class="sl" id="sumList"></div>
+    <div class="sb">
+      <button class="copy" id="copyBtn">复制记录</button>
+      <button class="done" id="homeBtn">完成</button>
+    </div>
+  </section>
+
+  <!-- ════════ SETTINGS ════════ -->
+  <section id="settings">
+    <div class="sbar">
+      <button class="ic" id="setBack">‹</button>
+      <div class="st">做组 / 休息时长</div>
+      <div class="sp"></div>
+    </div>
+    <div id="setBody"></div>
+    <button class="sreset" id="setReset">恢复默认</button>
+    <div class="snote">改动会立即保存，下次训练自动套用。热身 7 分钟、拉伸 5 分钟与单动作组（如杠铃俯身划船 45 / 60 秒）保持默认。</div>
+  </section>
+
+</div>
+
+<script>
+/* ════════════ 计划数据 ════════════ */
+const DAYS = [
+  { key:'mon', label:'周一', focus:'胸 + 肱三头', est:'约 47 分钟',
+    warmup:'肩关节环绕 + 手臂交叉拉伸 2分 → 胸部开合 + 扩胸 1分 → 空杆平板卧推 2×15 → 轻重量绳索下压 1×20 → 原地开合跳 30秒',
+    cooldown:'胸大肌 / 肱三头 / 肩前侧（各左右 30 秒）+ 腹部 1 分 + 深呼吸 1 分',
+    blocks:[
+      {name:'A', type:'compound', rounds:4, ex:[{n:'杠铃平板卧推',rm:'10RM'},{n:'绳索下压',rm:'10RM'}]},
+      {name:'B', type:'compound', rounds:4, ex:[{n:'哑铃卧推',rm:'10RM'},{n:'凳上反屈伸',rm:'10RM'}]},
+      {name:'C', type:'isolation', rounds:4, ex:[{n:'哑铃飞鸟',rm:'12RM'},{n:'拉力器夹胸',rm:'12RM'}]},
+      {name:'D', type:'isolation', rounds:2, optional:true, ex:[{n:'上斜哑铃推举',rm:'12RM'},{n:'颈后臂屈伸',rm:'12RM'}]},
+    ]},
+  { key:'wed', label:'周三', focus:'背 + 肱二头', est:'约 53 分钟',
+    warmup:'肩关节环绕 + 猫牛式 2分 → 直臂下拉热身 1×20 → 空杆俯身划船 2×15 → 轻重量杠铃弯举 1×20 → 原地高抬腿 30秒',
+    cooldown:'背阔肌 / 斜方肌 / 肱二头（各左右 30 秒）+ 腰部 1 分 + 深呼吸 1 分',
+    blocks:[
+      {name:'A', type:'compound', rounds:4, ex:[{n:'杠铃硬拉',rm:'8RM',note:'取下限 · 护腰'},{n:'杠铃弯举',rm:'10RM'}]},
+      {name:'B', type:'compound', rounds:4, ex:[{n:'坐姿下拉',rm:'10RM'},{n:'站姿哑铃交替弯举',rm:'10RM'}]},
+      {name:'C', type:'isolation', rounds:4, ex:[{n:'坐姿划船',rm:'12RM'},{n:'坐姿哑铃集中弯举',rm:'12RM'}]},
+      {name:'D', type:'single', rounds:4, ex:[{n:'杠铃俯身划船',rm:'10RM'}]},
+    ]},
+  { key:'fri', label:'周五', focus:'肩（三角肌）+ 腹', est:'约 56 分钟',
+    warmup:'肩关节环绕前后各15 → 手臂交叉拉伸 → 猫牛式10次 → 空杆颈前推举 2×15 → 轻重量侧平举 1×20 → 原地高抬腿 30秒',
+    cooldown:'肩前侧 / 肩后侧 / 三角肌中束（各左右 30 秒）+ 腹部 1 分 + 深呼吸 1 分',
+    blocks:[
+      {name:'A', type:'compound', rounds:4, ex:[{n:'坐姿哑铃推举',rm:'10RM'},{n:'反向卷腹',rm:'20RM'}]},
+      {name:'B', type:'compound', rounds:4, ex:[{n:'杠铃颈前推举',rm:'10RM'},{n:'卷腹',rm:'20RM'}]},
+      {name:'C', type:'isolation', rounds:4, ex:[{n:'哑铃侧平举',rm:'12RM'},{n:'转体卷腹',rm:'20RM',note:'左右各10'}]},
+      {name:'D', type:'isolation', rounds:4, ex:[{n:'哑铃前平举',rm:'12RM'},{n:'哑铃俯身飞鸟',rm:'12RM'}]},
+    ]},
+  { key:'sat', label:'周六', focus:'臀 + 腿', est:'约 47 分钟',
+    warmup:'髋关节环绕左右各15 → 弓步压腿 → 空杆深蹲 2×15 → 徒手箭步蹲左右各10 → 原地提踵 1×30 → 原地高抬腿 30秒',
+    cooldown:'股四头肌 / 腘绳肌 / 臀部 / 小腿（各左右 30 秒）+ 深呼吸 1 分',
+    blocks:[
+      {name:'A', type:'compound', rounds:4, ex:[{n:'杠铃深蹲',rm:'10RM'},{n:'负重臀桥',rm:'18RM'}]},
+      {name:'B', type:'compound', rounds:4, ex:[{n:'腿举机',rm:'10RM'},{n:'器械腿屈伸',rm:'12RM'}]},
+      {name:'C', type:'isolation', rounds:4, ex:[{n:'杠铃箭步蹲',rm:'10RM',note:'左右各5'},{n:'提踵',rm:'20RM'}]},
+      {name:'D', type:'isolation', rounds:2, optional:true, ex:[{n:'罗马尼亚硬拉',rm:'12RM'},{n:'坐姿腿弯举',rm:'12RM'}]},
+    ]},
+];
+const DEFAULT_TIMING = {
+  compound:{work:45, intra:30, inter:90},
+  isolation:{work:40, intra:20, inter:60},
+  single:{work:45, intra:0, inter:60},
+};
+function getTiming(){
+  let saved=null; try{ saved=JSON.parse(localStorage.getItem('timing')||'null'); }catch(e){}
+  const t=JSON.parse(JSON.stringify(DEFAULT_TIMING));
+  if(saved) for(const k in t) if(saved[k]) Object.assign(t[k], saved[k]);
+  return t;
+}
+function saveTiming(t){ try{ localStorage.setItem('timing', JSON.stringify(t)); }catch(e){} }
+function resetTiming(){ try{ localStorage.removeItem('timing'); }catch(e){} }
+const PHASE = {
+  warmup:{acc:'var(--warm)', name:'动态热身'},
+  work:{acc:'var(--work)'},
+  rest:{acc:'var(--rest)'},
+  cooldown:{acc:'var(--cool)', name:'静态拉伸'},
+};
+const RC = 2 * Math.PI * 130;   // ring circumference (r=130)
+
+/* ════════════ 步骤生成 ════════════ */
+function buildSteps(day, withOpt){
+  const steps = [];
+  const TM = getTiming();
+  let seg = 0;
+  steps.push({phase:'warmup', title:'动态热身', desc:day.warmup, target:7*60, seg:seg});
+  const blocks = day.blocks.filter(b => withOpt || !b.optional);
+  blocks.forEach(block=>{
+    seg++;
+    const t = TM[block.type];
+    for(let r=1; r<=block.rounds; r++){
+      block.ex.forEach((ex, ei)=>{
+        steps.push({phase:'work', block:block.name, ex, round:r, rounds:block.rounds, target:t.work, seg});
+        const lastEx = ei === block.ex.length-1;
+        const lastRound = r === block.rounds;
+        if(!(lastEx && lastRound)){
+          steps.push({phase:'rest', kind:lastEx?'组间休息':'组内休息', target:lastEx?t.inter:t.intra, seg});
+        }
+      });
+    }
+  });
+  steps.push({phase:'cooldown', title:'静态拉伸', desc:day.cooldown, target:5*60, seg:seg+1});
+  return {steps, segCount:seg+2};
+}
+
+/* ════════════ 状态 ════════════ */
+const S = { day:null, steps:[], segCount:0, idx:0, remaining:0, endAt:0, running:false, ticker:null, lastTick:-1, prevW:{}, curW:{} };
+let withOptional = false;
+
+/* ════════════ 音 / 震动 / 防熄屏 ════════════ */
+let actx=null, wakeLock=null;
+function unlockAudio(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(actx&&actx.state==='suspended') actx.resume(); }
+function beep(f,d,v){ if(!actx) return; try{ const o=actx.createOscillator(),g=actx.createGain(); o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(actx.destination); const n=actx.currentTime; g.gain.setValueAtTime(v,n); g.gain.exponentialRampToValueAtTime(.0001,n+d); o.start(n); o.stop(n+d);}catch(e){} }
+function vibrate(p){ if(navigator.vibrate) try{ navigator.vibrate(p);}catch(e){} }
+async function reqWake(){ try{ if('wakeLock' in navigator) wakeLock=await navigator.wakeLock.request('screen'); }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&S.running) reqWake(); });
+
+/* ════════════ 工具 ════════════ */
+const $ = id => document.getElementById(id);
+function fmt(s){ s=Math.max(0,Math.ceil(s)); const m=Math.floor(s/60),ss=s%60; return (m<10?'0'+m:m)+':'+(ss<10?'0'+ss:ss); }
+function hKey(n){ return 'rm_'+n; }
+function getH(n){ try{ return JSON.parse(localStorage.getItem(hKey(n))||'null'); }catch(e){ return null; } }
+function setH(n,o){ try{ localStorage.setItem(hKey(n),JSON.stringify(o)); }catch(e){} }
+function nextWork(from){ for(let i=from+1;i<S.steps.length;i++){ if(S.steps[i].phase==='work') return S.steps[i]; } return null; }
+function ringSVG(){ return `<svg viewBox="0 0 300 300"><circle class="ring-track" cx="150" cy="150" r="130"/>
+  <circle class="ring-prog" id="ring" cx="150" cy="150" r="130" stroke-dasharray="${RC.toFixed(1)}" stroke-dashoffset="0"/></svg>`; }
+
+/* ════════════ 首页 ════════════ */
+function renderHome(){
+  const list=$('dayList'); list.innerHTML='';
+  DAYS.forEach(d=>{
+    const n=d.blocks.filter(b=>withOptional||!b.optional).length;
+    const b=document.createElement('button'); b.className='day';
+    b.innerHTML=`<span class="dn">${d.label.replace('周','')}</span>
+      <span class="dm"><span class="lab">${d.label} · ${d.focus}</span>
+        <span class="sub"><b>${n} 个超级组</b> · ${d.est}</span></span>
+      <span class="arr">›</span>`;
+    b.onclick=()=>{ unlockAudio(); startSession(d); };
+    list.appendChild(b);
+  });
+}
+$('optBtn').onclick=()=>{ withOptional=!withOptional; $('sw').classList.toggle('on',withOptional); renderHome(); };
+
+/* ════════════ 会话 ════════════ */
+function show(sec){ ['home','session','summary','settings'].forEach(s=>{ const on=s===sec; const el=$(s); el.style.display=on?'flex':'none'; }); }
+function startSession(day){
+  const built=buildSteps(day,withOptional);
+  S.day=day; S.steps=built.steps; S.segCount=built.segCount; S.idx=0;
+  // 上次重量做快照（整场冻结），并作为本次默认值（沿用上次重量）
+  S.prevW={}; S.curW={};
+  day.blocks.forEach(b=>b.ex.forEach(e=>{ const hh=getH(e.n);
+    if(hh && hh.weight!==undefined && hh.weight!==''){ S.prevW[e.n]=+hh.weight; S.curW[e.n]=+hh.weight; } }));
+  $('tTitle').textContent=day.label+' · '+day.focus;
+  // segments
+  const seg=$('seg'); seg.innerHTML='';
+  for(let i=0;i<S.segCount;i++){ const e=document.createElement('i'); e.dataset.seg=i; seg.appendChild(e); }
+  show('session'); goTo(0);
+}
+function goTo(i){
+  stopTicker();
+  if(i>=S.steps.length) return showSummary();
+  if(i<0) i=0;
+  S.idx=i; S.lastTick=-1;
+  const step=S.steps[i]; S.remaining=step.target;
+  renderStep();
+  if(step.phase==='rest') startTicker(); else S.running=false;
+  renderControls();
+}
+function renderStep(){
+  const step=S.steps[S.idx];
+  const stage=$('stage');
+  $('session').style.setProperty('--acc', PHASE[step.phase].acc);
+
+  // 顶部 & 进度
+  const works=S.steps.filter(s=>s.phase==='work').length;
+  const doneW=S.steps.slice(0,S.idx+1).filter(s=>s.phase==='work').length;
+  $('tSub').textContent = step.phase==='work' ? `动作 ${doneW} / ${works}`
+    : step.phase==='rest' ? `休息中 · 动作 ${doneW} / ${works}`
+    : step.phase==='warmup' ? '准备开始' : '收尾拉伸';
+  document.querySelectorAll('#seg i').forEach((e,k)=>{ e.classList.toggle('done', k<step.seg); e.classList.toggle('cur', k===step.seg); });
+
+  let h='';
+  if(step.phase==='warmup' || step.phase==='cooldown'){
+    h = `<div class="ctx up">${step.phase==='warmup'?'热身':'拉伸'}</div>
+      <div class="exn">${step.title}</div>
+      <div class="ringwrap">${ringSVG()}<div class="rc">
+        <div class="big tnum" id="bigTime">${fmt(S.remaining)}</div>
+        <div class="lbl">${step.phase==='warmup'?'建议 7 分钟':'建议 5 分钟'}</div></div></div>
+      <div class="desc">${step.desc}</div>`;
+  }
+  else if(step.phase==='work'){
+    const ex=step.ex;
+    h = `<div class="ctx">超级组 <em>${step.block}</em> · 第 ${step.round} / ${step.rounds} 组</div>
+      <div class="exn">${ex.n}</div>
+      ${ex.note?`<div class="note">${ex.note}</div>`:''}
+      <div class="ringwrap">${ringSVG()}<div class="rc">
+        <div class="big tnum" id="bigTime">${fmt(S.remaining)}</div>
+        <div class="lbl">目标 <b>${ex.rm}</b></div></div></div>
+      ${weightControl(ex)}
+      <div class="nx">${workNext(S.idx)}</div>`;
+  }
+  else { /* rest */
+    const nw=nextWork(S.idx);
+    let wpart='';
+    if(nw && (nw.ex.n in S.curW) && S.curW[nw.ex.n]!=='') wpart=` · 上 ${fmtKg(S.curW[nw.ex.n])}kg`;
+    const nextHTML = nw
+      ? `<div class="nextcard"><span class="lead">NEXT</span><div class="nb">
+          <div class="nm">${nw.ex.n}</div>
+          <div class="ns">超级组 ${nw.block} · 第 ${nw.round}/${nw.rounds} 组 · 目标 ${nw.ex.rm}${wpart}</div></div></div>`
+      : `<div class="nextcard"><span class="lead">NEXT</span><div class="nb">
+          <div class="nm">静态拉伸</div><div class="ns">本超级组已完成，准备收尾</div></div></div>`;
+    h = `<div class="ctx up">${step.kind}</div>
+      <div class="ringwrap">${ringSVG()}<div class="rc">
+        <div class="big tnum" id="bigTime">${fmt(S.remaining)}</div>
+        <div class="lbl">休息</div></div></div>
+      <div class="restblk">${nextHTML}</div>`;
+  }
+  stage.innerHTML=h;
+  renderTime();
+  if(step.phase==='work') bindWeight(step);
+}
+function workNext(idx){
+  const nstep=S.steps[idx+1];
+  if(!nstep) return '<span>NEXT</span>收尾拉伸';
+  if(nstep.phase==='rest'){
+    const nw=nextWork(idx);
+    return `<span>NEXT</span>休息 ${nstep.target}秒 · <b>${nw?nw.ex.n:'拉伸'}</b>`;
+  }
+  if(nstep.phase==='work') return `<span>NEXT</span>超级组 ${nstep.block} · <b>${nstep.ex.n}</b>`;
+  return '<span>NEXT</span>静态拉伸';
+}
+
+/* ════════════ 每个动作的重量（可编辑 + 上次↔本次进步）════════════ */
+function fmtKg(n){ return String(Math.round((+n)*100)/100); }
+function badgeInfo(ex){
+  const p = (ex.n in S.prevW) ? S.prevW[ex.n] : null;
+  const c = (ex.n in S.curW && S.curW[ex.n]!=='') ? S.curW[ex.n] : null;
+  if(p!=null && c!=null){
+    const d=Math.round((c-p)*100)/100;
+    if(d>0) return {cls:'up', text:`较上次 ↑${fmtKg(d)}kg`};
+    if(d<0) return {cls:'dn', text:`较上次 ↓${fmtKg(-d)}kg`};
+    return {cls:'eq', text:`与上次持平 · ${fmtKg(p)}kg`};
+  }
+  if(p!=null) return {cls:'', text:`上次 ${fmtKg(p)}kg`};
+  return {cls:'', text:'首次记录'};
+}
+function weightControl(ex){
+  const cur = (ex.n in S.curW) ? S.curW[ex.n] : '';
+  const b = badgeInfo(ex);
+  return `<div class="wbox">
+    <div class="wb-top"><span class="wb-l">本动作重量</span><span class="wprog ${b.cls}" id="wprog">${b.text}</span></div>
+    <div class="wb-step">
+      <button class="wb-btn" data-d="-1">−</button>
+      <div class="wb-val"><input id="wInput" type="number" inputmode="decimal" placeholder="—" value="${cur}"><span class="wb-u">kg</span></div>
+      <button class="wb-btn" data-d="1">+</button>
+    </div></div>`;
+}
+function paintBadge(ex){ const el=$('wprog'); if(!el) return; const b=badgeInfo(ex); el.className='wprog '+b.cls; el.textContent=b.text; }
+function bindWeight(step){
+  const ex=step.ex, wi=$('wInput'); if(!wi) return;
+  const commit=v=>{
+    if(v===''){ delete S.curW[ex.n]; }
+    else { const num=Math.max(0, Math.round((+v||0)*100)/100); S.curW[ex.n]=num; setH(ex.n,{weight:num, ts:Date.now()}); }
+    paintBadge(ex);
+  };
+  wi.addEventListener('input', ()=>commit(wi.value.trim()));
+  document.querySelectorAll('.wb-btn').forEach(btn=>{ btn.onclick=()=>{
+    const base = wi.value.trim()==='' ? (S.prevW[ex.n] ?? 0) : (+wi.value||0);
+    const v = Math.max(0, Math.round((base + (btn.dataset.d==='1'?2.5:-2.5))*100)/100);
+    wi.value=v; commit(String(v));
+  };});
+}
+
+function renderTime(){
+  const bt=$('bigTime'); if(bt) bt.textContent=fmt(S.remaining);
+  const r=$('ring'); const step=S.steps[S.idx];
+  if(r&&step){ const p=Math.max(0,Math.min(1,S.remaining/step.target)); r.style.strokeDashoffset=(RC*(1-p)).toFixed(1); }
+}
+function renderControls(){
+  const step=S.steps[S.idx]; const m=$('mainBtn');
+  if(S.running){ m.textContent='暂停'; m.classList.add('ghost'); }
+  else if(S.remaining<=0){ m.textContent='下一步'; m.classList.remove('ghost'); }
+  else { m.textContent = step&&step.phase==='work' ? '开始这一组' : '开始'; m.classList.remove('ghost'); }
+}
+
+/* ════════════ 计时 ════════════ */
+function startTicker(){ unlockAudio(); S.endAt=Date.now()+S.remaining*1000; S.running=true; clearInterval(S.ticker); S.ticker=setInterval(tick,200); reqWake(); renderControls(); }
+function pauseTicker(){ S.remaining=Math.max(0,(S.endAt-Date.now())/1000); S.running=false; clearInterval(S.ticker); renderTime(); renderControls(); }
+function stopTicker(){ S.running=false; clearInterval(S.ticker); }
+function tick(){
+  const rem=(S.endAt-Date.now())/1000; S.remaining=Math.max(0,rem);
+  const step=S.steps[S.idx];
+  if(step.phase==='rest'){ const t=Math.ceil(S.remaining); if(t<=3&&t>0&&t!==S.lastTick){ S.lastTick=t; beep(1320,.08,.18); vibrate(40); } }
+  renderTime();
+  if(rem<=0){
+    clearInterval(S.ticker); S.running=false;
+    if(step.phase==='work'){ beep(660,.18,.22); vibrate(180); }
+    else if(step.phase==='rest'){ beep(880,.14,.22); setTimeout(()=>beep(1175,.18,.22),150); vibrate([120,60,120]); }
+    else { beep(880,.2,.2); vibrate(200); }
+    if(step.phase==='work'||step.phase==='rest') goTo(S.idx+1); else renderControls();
+  }
+}
+
+/* ════════════ 按钮 ════════════ */
+$('mainBtn').onclick=()=>{ unlockAudio(); if(S.running) pauseTicker(); else if(S.remaining<=0) goTo(S.idx+1); else startTicker(); };
+$('nextBtn').onclick=()=>goTo(S.idx+1);
+$('prevBtn').onclick=()=>goTo(S.idx-1);
+$('exitBtn').onclick=()=>{ stopTicker(); if(confirm('结束本次训练？')) goHome(); };
+
+/* ════════════ 结算 ════════════ */
+function showSummary(){
+  stopTicker();
+  const recorded=Object.keys(S.curW).filter(k=>S.curW[k]!=null && S.curW[k]!=='').length;
+  $('sumTitle').textContent=S.day.label+' 训练完成';
+  $('sumSub').textContent=S.day.focus+' · 记录了 '+recorded+' 个动作';
+  const list=$('sumList'); list.innerHTML='';
+  const seen=new Set();
+  S.steps.filter(s=>s.phase==='work').forEach(s=>{
+    if(seen.has(s.ex.n)) return; seen.add(s.ex.n);
+    const cur=S.curW[s.ex.n], prev=S.prevW[s.ex.n];
+    const div=document.createElement('div'); div.className='sr';
+    let w;
+    if(cur!=null && cur!==''){
+      let tag='';
+      if(prev!=null){ const d=Math.round((cur-prev)*100)/100;
+        tag = d>0?` <span class="up">↑${fmtKg(d)}</span>`: d<0?` <span class="dn">↓${fmtKg(-d)}</span>`:` <span class="eq">持平</span>`; }
+      w=`<div class="w">${fmtKg(cur)}<span>kg</span>${tag}</div>`;
+    } else { w=`<div class="w e">未记录</div>`; }
+    const sub=`目标 ${s.ex.rm}`+(prev!=null?` · 上次 ${fmtKg(prev)}kg`:'');
+    div.innerHTML=`<div class="b">${s.block}</div><div class="sm"><div class="n">${s.ex.n}</div><div class="t">${sub}</div></div>${w}`;
+    list.appendChild(div);
+  });
+  show('summary');
+}
+$('copyBtn').onclick=()=>{
+  const d=new Date(), ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let txt=`${ds} ${S.day.label} ${S.day.focus}\n`, any=false; const seen=new Set();
+  S.steps.filter(s=>s.phase==='work').forEach(s=>{ if(seen.has(s.ex.n))return; seen.add(s.ex.n);
+    const cur=S.curW[s.ex.n], prev=S.prevW[s.ex.n];
+    if(cur!=null && cur!==''){ any=true;
+      let p = prev!=null ? `（上次 ${fmtKg(prev)}${cur>prev?' ↑':cur<prev?' ↓':''}）` : '';
+      txt+=`${s.ex.n}  ${fmtKg(cur)}kg（目标${s.ex.rm}）${p}\n`; }
+  });
+  if(!any) txt+='（本次未记录重量）';
+  navigator.clipboard?.writeText(txt).then(()=>{ $('copyBtn').textContent='已复制 ✓'; setTimeout(()=>$('copyBtn').textContent='复制记录',1500); }).catch(()=>alert(txt));
+};
+$('homeBtn').onclick=goHome;
+function goHome(){ stopTicker(); if(wakeLock){ try{wakeLock.release();}catch(e){} wakeLock=null; } show('home'); }
+
+/* ════════════ 设置（做组 / 休息时长）════════════ */
+const SET_GROUPS = [
+  {group:'复合超级组 · 大重量动作', type:'compound'},
+  {group:'孤立超级组 · 局部精修', type:'isolation'},
+];
+const SET_FIELDS = [
+  {key:'work',  label:'做组时长', min:15},
+  {key:'intra', label:'组内休息', min:0},
+  {key:'inter', label:'组间休息', min:15},
+];
+let workTiming=null;
+function renderLegend(){
+  const t=getTiming();
+  $('legend').innerHTML =
+    `<b>复合组</b> 做 ${t.compound.work} 秒 · 组内歇 ${t.compound.intra} 秒 · 组间歇 ${t.compound.inter} 秒<br>`+
+    `<b>孤立组</b> 做 ${t.isolation.work} 秒 · 组内歇 ${t.isolation.intra} 秒 · 组间歇 ${t.isolation.inter} 秒<br>`+
+    `每个超级组最后一组做完不歇，直接进下一组`;
+}
+function renderSettings(){
+  const body=$('setBody'); body.innerHTML='';
+  SET_GROUPS.forEach(g=>{
+    const sec=document.createElement('div'); sec.className='sgroup';
+    sec.innerHTML=`<div class="gh up">${g.group}</div>`;
+    SET_FIELDS.forEach(f=>{
+      const row=document.createElement('div'); row.className='srow';
+      row.innerHTML=`<div class="sl">${f.label}</div>
+        <div class="stepper"><button data-d="-1">−</button>
+          <div class="v"><span class="num">${workTiming[g.type][f.key]}</span><small>秒</small></div>
+          <button data-d="1">+</button></div>`;
+      const num=row.querySelector('.num');
+      row.querySelectorAll('button').forEach(b=>{ b.onclick=()=>{
+        let v=workTiming[g.type][f.key]+(b.dataset.d==='1'?5:-5);
+        v=Math.max(f.min, Math.min(600, v));
+        workTiming[g.type][f.key]=v; num.textContent=v;
+        saveTiming(workTiming); renderLegend();
+      };});
+      sec.appendChild(row);
+    });
+    body.appendChild(sec);
+  });
+}
+$('settBtn').onclick=()=>{ workTiming=getTiming(); renderSettings(); show('settings'); };
+$('setBack').onclick=()=>show('home');
+$('setReset').onclick=()=>{ resetTiming(); workTiming=getTiming(); renderSettings(); renderLegend(); };
+
+/* ════════════ PWA service worker（HTTPS 下离线可用）════════════ */
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+/* ════════════ 启动 ════════════ */
+renderHome(); renderLegend(); show('home');
+</script>
+</body>
+</html>

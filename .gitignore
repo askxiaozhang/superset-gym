@@ -1,0 +1,19 @@
+# Vercel deploy mirror + project linkage (kept local, not part of the source)
+superset-gym/
+.vercel/
+
+# Local agent / editor config
+.claude/
+
+# Node tooling (only used to generate screenshots locally)
+node_modules/
+package.json
+package-lock.json
+
+# Throwaway artifacts
+qr.png
+qr-vercel.png
+workout-v1.html
+
+# macOS
+.DS_Store
